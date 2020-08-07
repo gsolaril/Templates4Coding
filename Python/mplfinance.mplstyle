@@ -1,0 +1,65 @@
+# Set black background default line colors to white.
+
+##################### FIGURE
+figure.figsize: 15, 5
+figure.facecolor: black
+figure.edgecolor: black
+savefig.facecolor: black
+savefig.edgecolor: black
+
+##################### TEXT
+text.color: white
+font.family: sans-serif
+font.size: 10
+font.weight: normal
+
+###################### TITLES
+figure.titleweight: normal
+figure.titlesize: 12
+axes.titleweight: normal
+axes.titlesize: 12
+
+##################### AXIS SIZES
+xtick.major.size: 7
+xtick.major.width: 2
+xtick.minor.size: 5
+xtick.minor.width: 2
+ytick.major.size: 7
+ytick.major.width: 2
+ytick.minor.size: 5
+ytick.minor.width: 2
+
+###################### DRAWING TOOLS
+lines.color: white
+patch.edgecolor: white
+
+###################### AXES PROPS
+axes.facecolor: black
+axes.edgecolor: white
+axes.linewidth: 1.5
+axes.labelcolor: white
+axes.prop_cycle: cycler('color', ['ff0000', 'ee0011', 'dd0022', 'cc0033', 'bb0044', 'aa0055', '990066', '880077', '770088', '660099', '5500aa', '4400bb', '3300cc', '2200dd', '1100ee', '0000ff'])
+
+###################### COLORMAP
+image.cmap: jet
+
+###################### TICKS
+xtick.color: white
+ytick.color: white
+xtick.minor.visible: True
+
+###################### GRID
+axes.grid: True
+axes3d.grid: True
+polaraxes.grid: True
+axes.grid.which: both
+grid.alpha:  0.67
+grid.color: white
+grid.linestyle: :
+
+###################### LEGEND
+legend.framealpha: 0.75
+legend.fontsize: 10
+legend.frameon: False
+legend.numpoints: 1
+legend.scatterpoints: 1

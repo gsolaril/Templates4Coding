@@ -1,0 +1,23 @@
+h1, h3 {
+    font-family: Arial;
+    text-align: center;
+    text-decoration: underline; }
+
+table.header {
+    font-family: Arial;
+    background-color: #222222ff;
+    line-height: 150%;
+    margin-left: 5%;
+    margin-right: 5%;
+    width: 90%; }
+
+h4, p, body, ul, ol {
+    font-family: Arial;
+    text-align: justify;
+    margin-right: 5%; }
+
+h4 { text-decoration: underline; }
+
+blockquote {
+    font-family: Arial;
+    font-style: italic; }
