@@ -52,7 +52,7 @@ xtick.minor.visible: True
 axes.grid: True
 axes3d.grid: True
 polaraxes.grid: True
-axes.grid.which: both
+axes.grid.which: major
 grid.alpha:  0.67
 grid.color: white
 grid.linestyle: :
