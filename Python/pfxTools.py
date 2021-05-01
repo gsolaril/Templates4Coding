@@ -68,7 +68,7 @@ class MkData:
             raise TypeError("Row number must be a positive integer.")
         API = iq("gsolaril@alu.itba.edu.ar", getpass("Password: ")) ; API.connect()
         if (now == None): now = DT_.now()
-        if not isinstance(rows, DT_):
+        if not isinstance(now, DT_):
             raise TypeError("Reference timestamp must be of datetime datatype.")
         frame = MkData.frame2secs(frame)
         Data = pandas.DataFrame()
