@@ -159,7 +159,7 @@ class Candle:
             ymin, ymax = ax.get_ylim() ; yd = ymax - ymin
             ax.set_ylim(ymax = ymax, ymin = ymin - yd/3)
         if cond_T:
-            try: ts = [t.strftime(format = "%y/%m/%d %H:%M") for t in T]
+            try: ts = [t.strftime(format = "%Y/%m/%d %H:%M") for t in T]
             except: raise TypeError("Time labels must be of datetime type.")
             ax.set_xticks(ticks = range(0, len(ts), len(ts)//30))
             ax.set_xticklabels(ts[: : len(ts)//30], rotation = 90)
