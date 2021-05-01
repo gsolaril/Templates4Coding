@@ -67,9 +67,9 @@ class MkData:
         if not isinstance(rows, int) or (rows < 1):
             raise TypeError("Row number must be a positive integer.")
         API = iq("gsolaril@alu.itba.edu.ar", getpass("Password: ")) ; API.connect()
-        if isinstance(now, type(None)): now = DT_.now()
-        if not isinstance(now, DT_): raise TypeError(
-            "Reference timestamp must be of datetime datatype.")
+        if (now == None): now = DT_.now()
+        if not isinstance(now, DT_):
+            raise TypeError("Reference timestamp must be of datetime datatype.")
         frame = MkData.frame2secs(frame)
         Data = pandas.DataFrame()
         t = int(now.timestamp())
@@ -115,11 +115,12 @@ class MkData:
 
 class Candle:
 
-    f = matplotlib.figure.Figure
-    a = matplotlib.figure.Axes
+    _f = matplotlib.figure.Figure
+    _a = matplotlib.figure.Axes
+    _r = matplotlib.patches.Rectangle
 
     @staticmethod
-    def plot(O, H, L, C, V = None, T = None) -> (f, a):
+    def plot(O, H, L, C, V = None, T = None) -> (_f, _a):
         """
         Plot a candlestick chart with given price arrays.
         Inputs:     * (any iterable of floats) O: array with [O]pen prices.
@@ -129,7 +130,7 @@ class Candle:
                     * (optional, any iterable of ints) V: array with [V]olume prices.
                     * (optional, any iterable of datetimes) t: array with [T]imestamps.
         Outputs:    * (matplotlib figure) fig: Figure container with default properties.
-                    * (matplotlib subplot axes) ax: Axes with complete candlestick chart.
+                    * (matplotlib subplot/axes) ax: Axes with complete candlestick chart.
         """
         typeError = "Input data must be iterables."
         valuError = "Input data must be all of the same size."
@@ -159,17 +160,44 @@ class Candle:
             ymin, ymax = ax.get_ylim() ; yd = ymax - ymin
             ax.set_ylim(ymax = ymax, ymin = ymin - yd/3)
         if cond_T:
-            try: ts = [t.strftime(format = "%y/%m/%d %H:%M") for t in T]
+            try: ts = [t.strftime(format = "%Y/%m/%d %H:%M") for t in T]
             except: raise TypeError("Time labels must be of datetime type.")
             ax.set_xticks(ticks = range(0, len(ts), len(ts)//30))
             ax.set_xticklabels(ts[: : len(ts)//30], rotation = 90)
         return fig, ax
 
-if __name__ == "__main__":
+    @staticmethod
+    def plotb(X, ax: _a = None, ratio: float = 1/2) -> _a:
+        """
+        Plot a secondary oscillator chart below primary candlestick chart.
+        Inputs:     * (any iterable of floats) X: array with oscillator values.
+                    * (matplotlib subplot/axes) ax: Axes with candlestick chart.
+                    * (float) ratio "a:b" where "b" would be the primary chart size. 
+        Outputs:    * (matplotlib subplot/axes) a2: Axes with secondary chart.
+        """
+        if isinstance(ax, type(None)): ax = matplotlib.pyplot.gca()
+        try: pos = ax.get_position()
+        except: raise TypeError("Invalid instance of axes (\"ax\").")
+        if not (0 < ratio <= 1):
+            raise ValueError("Axes size ratio must be between 0 and 1.")
+        try:
+            candles = [x for x in ax.get_children() if isinstance(x, Candle._r)]
+            if (len(X) != len(candles)//2): raise TypeError
+        except: raise TypeError("Input data length must be the same as the axes.")
+        x_a, dx_a = pos.x0, pos.x1 - pos.x0
+        y_b, dy_a = pos.y0, pos.y1 - pos.y0
+        dy_a, dy_b = dy_a/(1 + ratio), dy_a/(1 + 1/ratio)
+        y_a = y_b + dy_b
+        ax.set_position(pos = [x_a, y_a, dx_a, dy_a])
+        a2 = ax.figure.add_axes((x_a, y_b, dx_a, dy_b), sharex = ax)
+        a2.set_xticks(list(ax.get_xticks()))
+        a2.set_xticklabels(list(ax.get_xticklabels()), rotation = 90)
+        return a2
 
-    #symbol, frame, rows = "OANDA:EUR_USD", "H1", 100
-    #df = MkData.download_fh(symbol, frame, rows)
-    #f, a = Candle.plot(df["O"], df["H"], df["L"], df["C"], V = df["V"], T = df.index)
-    #a.set_title(f"{symbol}, {frame}, {rows} rows")
-    #f.savefig(fname = "testfig.jpg")
-    help(MkData.download_fh)
+if (__name__ == "__main__"):
+
+    symbol, frame, rows = "OANDA:EUR_USD", "H1", 100
+    df = MkData.download_fh(symbol, frame, rows)
+    f, a = Candle.plot(df["O"], df["H"], df["L"], df["C"], V = df["V"], T = df.index)
+    a.set_title(f"{symbol}, {frame}, {rows} rows")
+    f.savefig(fname = "testfig.jpg")
