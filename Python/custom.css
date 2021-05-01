@@ -1,0 +1,52 @@
+h1, h2, h3 { font-family: Arial; text-align: center; text-decoration: underline; }
+h2 { font-size: 150%; }
+h3 { font-size: 125%; }
+
+table {
+    font-family: Arial;
+    background-color: #222222;
+    align-content: center;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 5px;
+    padding-right: 5px; }
+
+table.header {
+    font-family: Arial;
+    background-color: #222222;
+    line-height: 150%;
+    margin-left: 5%;
+    margin-right: 5%;
+    width: 90%; }
+
+table.square {
+    font-family: Arial;
+    background-color: #222222;
+    text-align: center;
+    width: 50%; }    
+
+h4, p, body, ul, ol { font-family: Arial; text-align: left; margin-right: 5%; }
+div.y { color: yellow; display: inline-block; }
+
+h4 { text-decoration: underline; }
+
+b { font-size: 100%; }
+
+blockquote { font-family: Arial; font-style: italic; }
+
+code { font-family: Consolas; }
+ul li { list-style: square; }
+ol { list-style: none; counter-reset: n; }
+ol li { counter-increment: n; }
+ol li::before { content: "(" counter(n) ") "; font-weight: bold; }
+
+.dataframe { margin-left: 0%; font-family: Arial; font-size: 120% }
+.dataframe tr { white-space : nowrap; text-align: right !important; width: 60%; }
+.dataframe th { white-space : nowrap; text-align: center !important; background: #151525; }
+.dataframe td { white-space : nowrap; }
+
+::selection { background-color: #0000B0; }
+
+.output_wrapper, .output { height : auto !important; }
+
+.output_scroll { box-shadow : none !important; }
