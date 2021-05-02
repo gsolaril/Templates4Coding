@@ -199,8 +199,8 @@ class Candle:
 
 if (__name__ == "__main__"):
 
-    symbol, frame, rows = "OANDA:EUR_USD", "H1", 100
-    df = MkData.download_iq(symbol, frame, rows)
+    symbol, frame, rows = "USDCAD", "H1", 100 ## IQ and FH have different quote labels!
+    df = MkData.download_iq(symbol, frame, rows, password = "12345678")
     f, a = Candle.plot(df["O"], df["H"], df["L"], df["C"], V = df["V"], T = df.index)
     a.set_title(f"{symbol}, {frame}, {rows} rows")
     f.savefig(fname = "testfig.jpg")
