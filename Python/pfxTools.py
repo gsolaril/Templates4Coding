@@ -50,7 +50,8 @@ class MkData:
         return mult*number
 
     @staticmethod
-    def download_iq(symbol: str, frame: str, rows: int = 1000, now: DT_ = None):
+    def download_iq(symbol: str, frame: str, rows: int = 1000,
+                      now: DT_ = None, password: str = ""):
         """
         Download data from IQ Option database.
         Inputs:     * (str) symbol: financial instrument quote. Check IQ Option portfolio.
@@ -66,7 +67,8 @@ class MkData:
         if not isinstance(frame, str): raise TypeError("Timeframe must be a string.")
         if not isinstance(rows, int) or (rows < 1):
             raise TypeError("Row number must be a positive integer.")
-        API = iq("gsolaril@alu.itba.edu.ar", getpass("Password: ")) ; API.connect()
+        while (password == ""): password = getpass("Password: ")
+        API = iq("gsolaril@alu.itba.edu.ar", password) ; API.connect()
         if (now == None): now = DT_.now()
         if not isinstance(now, DT_):
             raise TypeError("Reference timestamp must be of datetime datatype.")
@@ -198,7 +200,7 @@ class Candle:
 if (__name__ == "__main__"):
 
     symbol, frame, rows = "OANDA:EUR_USD", "H1", 100
-    df = MkData.download_fh(symbol, frame, rows)
+    df = MkData.download_iq(symbol, frame, rows)
     f, a = Candle.plot(df["O"], df["H"], df["L"], df["C"], V = df["V"], T = df.index)
     a.set_title(f"{symbol}, {frame}, {rows} rows")
     f.savefig(fname = "testfig.jpg")
