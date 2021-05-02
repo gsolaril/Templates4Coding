@@ -144,21 +144,22 @@ class Candle:
         if not (len(O) == len(H) == len(L) == len(C)): raise ValueError(valuError)
         if cond_V and not (len(O) == len(V)): raise ValueError(valuError)
         if cond_T and not (len(O) == len(T)): raise ValueError(valuError)
-        n = len(O)
+        N, bull, bear = len(O), list(), list()
+        for n in range(N): [ bull.append(O[n] <= C[n]) , bear.append(O[n] > C[n]) ]
         fig, ax = matplotlib.pyplot.subplots()
-        bu, be = (O <= C).values, (C < O).values
-        x, cw = numpy.arange(n), 1/n**(1/2)
+        x, cw = numpy.arange(N), 1/N**(1/2)
         c_back = numpy.array(fig.get_facecolor())
         c_fore = 1 - c_back   ;   c_fore[-1] = 1
-        ax.bar(x[bu], H[bu] - L[bu], 1*cw, L[bu], fc = c_fore, ec = c_fore, lw = 1)
-        ax.bar(x[bu], C[bu] - O[bu], 5*cw, O[bu], fc = c_fore, ec = c_fore, lw = 1)
-        ax.bar(x[be], H[be] - L[be], 1*cw, L[be], fc = c_fore, ec = c_fore, lw = 1)
-        ax.bar(x[be], O[be] - C[be], 5*cw, C[be], fc = c_back, ec = c_fore, lw = 1)
+        ax.bar(x[bull], H[bull] - L[bull], 1*cw, L[bull], fc = c_fore, ec = c_fore, lw = 1)
+        ax.bar(x[bull], C[bull] - O[bull], 5*cw, O[bull], fc = c_fore, ec = c_fore, lw = 1)
+        ax.bar(x[bear], H[bear] - L[bear], 1*cw, L[bear], fc = c_fore, ec = c_fore, lw = 1)
+        ax.bar(x[bear], O[bear] - C[bear], 5*cw, C[bear], fc = c_back, ec = c_fore, lw = 1)
         if cond_V:
-            ax.twinx().bar(x, V, 3*cw, fc = c_fore, ec = c_fore, lw = 1)
-            ax.twinx().set_ylim(ymin = 0, ymax = 4*V.max())
+            ax2 = ax.twinx()  ;  s = 0.1
             ymin, ymax = ax.get_ylim() ; yd = ymax - ymin
-            ax.set_ylim(ymax = ymax, ymin = ymin - yd/3)
+            ax2.bar(x, V, 3*cw, fc = c_fore, ec = c_fore)
+            ax2.set_ylim(ymin = 0, ymax = (4 + s)*V.max())
+            ax.set_ylim(ymax = ymax, ymin = ymin - yd/(3 - s))
         if cond_T:
             try: ts = [t.strftime(format = "%Y/%m/%d %H:%M") for t in T]
             except: raise TypeError("Time labels must be of datetime type.")
