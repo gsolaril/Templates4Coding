@@ -1,6 +1,6 @@
+import time, numpy, pandas, matplotlib.pyplot, finnhub, sys
 from datetime import datetime as DT_, timedelta as TD_
 from iqoptionapi.stable_api import IQ_Option as iq
-import numpy, pandas, matplotlib.pyplot, finnhub
 from getpass import getpass
 
 class MkData:
@@ -50,26 +50,12 @@ class MkData:
         return mult*number
 
     @staticmethod
-    def download_iq(symbol: str, frame: str, rows: int = 1000,
-                      now: DT_ = None, password: str = ""):
-        """
-        Download data from IQ Option database.
-        Inputs:     * (str) symbol: financial instrument quote. Check IQ Option portfolio.
-                    * (str) frame: timeframe label, as per trading standards (e.g.: "H1", etc).
-                    * (int) rows: amount of candles to be downloaded.
-                    * (datetime) now: timestamp of the last candle, from which to look backwards.
-                      ...default is the timestamp representing actual date and time.
-        Outputs:    * (dataframe) Data: downloaded Pandas' dataframe in (T)OHLCV format.
-        ... E.g.:   - download_iq("EURUSD", "M1", 1200, datetime.datetime(2020, 1, 1))
-                    - download_iq("EURUSD", "M1", 1200, datetime.datetime.now())
-        """
+    def __download_iq(API, symbol: str, frame: str, rows: int = 1000, now: DT_ = None):
+        """[Private function. Use public, without trailing underscores] """
         if not isinstance(symbol, str): raise TypeError("Symbol must be a string.")
         if not isinstance(frame, str): raise TypeError("Timeframe must be a string.")
         if not isinstance(rows, int) or (rows < 1):
             raise TypeError("Row number must be a positive integer.")
-        while (password == ""): password = getpass("Password: ")
-        API = iq("gsolaril@alu.itba.edu.ar", password) ; API.connect()
-        if (now == None): now = DT_.now()
         if not isinstance(now, DT_):
             raise TypeError("Reference timestamp must be of datetime datatype.")
         frame = MkData.frame2secs(frame)
@@ -90,24 +76,13 @@ class MkData:
         return Data.sort_index().drop_duplicates()
 
     @staticmethod
-    def download_fh(symbol: str, frame: str, rows: int = 1000, now: DT_ = None):
-        """
-        Download data from Finnhub API database.
-        Inputs:     * (str) symbol: financial instrument quote. Check IQ Option portfolio.
-                    * (str) frame: timeframe label, as per trading standards (e.g.: "H1", etc).
-                    * (int) rows: amount of candles to be downloaded.
-                    * (datetime) now: timestamp of the last candle, from which to look backwards.
-                      ...default is the timestamp representing actual date and time.
-        Outputs:    * (dataframe) Data: downloaded Pandas' dataframe in (T)OHLCV format.
-        ... E.g.:   - download_fh("EURUSD", "M1", 1200, datetime.datetime(2020, 01, 01))
-                    - download_fh("EURUSD", "M1", 1200, datetime.datetime.now())
-        """
-        FCL = finnhub.Client(api_key = "c1cjh0748v6vbcpf2rlg")
+    def __download_fh(API, symbol: str, frame: str, rows: int = 1000, now: DT_ = None):
+        """[Private function. Use public, without trailing underscores] """
         if (now == None): now = DT_.now()
         frame = MkData.frame2secs(frame)
         t = int(now.timestamp())
         t0 = t - rows*frame
-        Data = FCL.forex_candles(symbol, frame//60, t0, t)
+        Data = API.forex_candles(symbol, frame//60, t0, t)
         Data.pop("s")  ;  Data = pandas.DataFrame(Data)
         Data.set_index(keys = "t", drop = True, inplace = True)
         Data.index = pandas.to_datetime(Data.index, unit = "s", utc = True)
@@ -115,6 +90,64 @@ class MkData:
         Data.columns = [_.upper() for _ in Data.columns]
         return Data.sort_index().drop_duplicates()
 
+    @staticmethod
+    def download_iq(symbols, frame: str, rows: int = 1000,
+        now: DT_ = None, email: str = "", pword: str = ""):
+        """
+        Download data from IQ Option database.
+        Inputs:     * (any iterable) symbols: strings with financial quotes. Check IQ database.
+                    * (str) frame: timeframe label, as per trading standards (e.g.: "H1", etc).
+                    * (int) rows: amount of candles to be downloaded.
+                    * (datetime) now: timestamp of the last candle, from which to look backwards.
+                      ...default is the timestamp representing actual date and time.
+                    * (str, str) Username (email) and password (pword) of IQ Option account.
+                      ...if not specified, it will be asked in entry (input).
+        Outputs:    * (dataframe) Data: downloaded Pandas' dataframe in (T)OHLCV format.
+        ... E.g.:   - download_iq(["EURUSD"], "M1", 1200, datetime.datetime(2020, 1, 1))
+                    - download_iq(["MSFT", "AAPL"], "M1", 1200, datetime.datetime.now())
+        """
+        try: symbols[0]
+        except: raise TypeError("Array of symbols must be a non-empty iterable.")
+        columns = pandas.MultiIndex.from_product((symbols, []))
+        Data = pandas.DataFrame(columns = columns)
+        while not (isinstance(email, str) and (email != "")): email = input("User email: ")
+        while not (isinstance(pword, str) and (pword != "")): pword = getpass("Password: ")
+        API = iq(email = email, password = pword) ; API.connect()
+        if (now == None): now = DT_.now()
+        for symbol in symbols:
+            data = MkData.__download_iq(API, symbol, frame, rows, now)
+            _ = pandas.MultiIndex.from_product([[symbol], data.columns])
+            Data[_] = data
+        return Data
+    
+    @staticmethod
+    def download_fh(symbols, frame: str, rows: int = 1000, now: DT_ = None, key: str = ""):
+        """
+        Download data from Finnhub API database.
+        Inputs:     * (str) symbol: financial instrument quote. Check IQ Option portfolio.
+                    * (str) frame: timeframe label, as per trading standards (e.g.: "H1", etc).
+                    * (int) rows: amount of candles to be downloaded.
+                    * (datetime) now: timestamp of the last candle, from which to look backwards.
+                      ...default is the timestamp representing actual date and time.
+                    * (str) key: API key for Finnhub client connection.
+                      ...if not specified, it will be asked in entry (input).
+        Outputs:    * (dataframe) Data: downloaded Pandas' dataframe in (T)OHLCV format.
+        ... E.g.:   - download_fh(["EURUSD"], "M1", 1200, datetime.datetime(2020, 1, 1))
+                    - download_fh(["MSFT", "AAPL"], "M1", 1200, datetime.datetime.now())
+        """
+        try: symbols[0]
+        except: raise TypeError("Array of symbols must be a non-empty iterable.")
+        columns = pandas.MultiIndex.from_product((symbols, []))
+        Data = pandas.DataFrame(columns = columns)
+        while not (isinstance(key, str) and (key != "")): key = input("Finnhub API key: ")
+        API = finnhub.Client(api_key = key)
+        if (now == None): now = DT_.now()
+        for symbol in symbols:
+            data = MkData.__download_fh(API, symbol, frame, rows, now)
+            _ = pandas.MultiIndex.from_product([[symbol], data.columns])
+            Data[_] = data
+        return Data
+        
 class Candle:
 
     _f = matplotlib.figure.Figure
@@ -158,6 +191,9 @@ class Candle:
         ax.bar(x[bear], O[bear] - C[bear], 5*cw, C[bear], fc = c_back, ec = c_fore, lw = 1)
         if cond_V:
             ax2 = ax.twinx()  ;  s = 0.1
+            ax2.grid(False, axis = "y")
+            v_max = 10*10**int(numpy.log10(max(V)))
+            ax2.set_yticks(range(0, v_max//2, v_max//10))
             ymin, ymax = ax.get_ylim() ; yd = ymax - ymin
             ax2.bar(x, V, 3*cw, fc = c_fore, ec = c_fore)
             ax2.set_ylim(ymin = 0, ymax = (4 + s)*V.max())
@@ -197,10 +233,87 @@ class Candle:
         a2.set_xticklabels(list(ax.get_xticklabels()), rotation = 90)
         return a2
 
+class ProgBar:
+    def __init__(self, length: int, width: int = 50):
+        """
+        Create a small progress bar for tracking processes.
+        Inputs:     * (int) length: amount of steps that the cycle requires.
+                    * (int) width: amount of blocks that the bar will draw at 100%
+        """
+        self.__length, self.__width = length, width
+        sys.stdout.write("\r[%s] 0%%" % (" "*width))
+        self.__prog = 0
+    def show(self, step: int = 1):
+        """
+        Increase progress of bar instance. Might add blocks depending on step size.
+        Inputs:     * (int) step: how many steps has the process moved.
+        """
+        self.__prog = min(self.__prog + step, self.__length)
+        width, track = self.__width, self.__prog/self.__length
+        bar = "■"*int(width*track) + " "*int(width*(1 - track))
+        sys.stdout.write("\r[%s] %d%%" % (bar, 100*track))
+        sys.stdout.flush()
+
+class Backtest:
+    _cActive = ["OT", "OP", "Order", "Size", "Sym", "SL", "TP", "WP", "Born", "fC", "fT"]
+    _cClosed = ["OT", "OP", "Order", "Size", "Sym", "CT", "CP", "WP", "Born", "Died"]
+
+    @staticmethod
+    def binary(Strategy, Data: pandas.DataFrame) -> pandas.DataFrame: pass
+    
+    @staticmethod
+    def trades(Strategy, Data: pandas.DataFrame, max_trades: int = 4) -> pandas.DataFrame:
+        """
+        First phase of backtest.
+        Inputs:     * (Strategy) Standard strategy instance with "analyze" method.
+                    * (pandas.DataFrame) Data: Market history dataset. If from
+                      multiple instruments, inner column layer must be OHLCV.
+                    * (int) max_trades: Max amount of simultaneous trades allowed.
+        Outputs:    * (pandas.DataFrame) Spreadsheet with partial trades' data. Does
+                      only focus to non-financial response of strategy, holding just
+                      opening and closing time/price points, as well as sinks.
+        """
+        Active = pandas.DataFrame(columns = Backtest._cActive)
+        Closed = pandas.DataFrame(columns = Backtest._cClosed)
+        progbar = ProgBar(Data.shape[0] - Strategy.lookback())
+        for n in range(Strategy.lookback(), Data.shape[0] + 1):
+            rows = Data.iloc[n - Strategy.lookback() : n, :]
+            t1 = rows.index[-2]   ;  t = rows.index[-1]
+            r1 = rows.loc[t1, :]  ;  r = rows.loc[t, :]
+            inds, sign = Strategy.analyze(rows)
+            to_close, t_calc = list(), time.time()
+            for label, value in inds.items():
+                Data.loc[t, ("Inds", label)] = value
+            Data.loc[t, "Delay"] = time.time() - t_calc
+            for index in Active.index:
+                trade = Active.loc[index, :].values
+                t_op, p_op, order, size, sym, p_sl, p_tp, p_wp, born, fC, fT = trade
+                p_min = min(r[sym]["L"], r[sym]["O"], r1[sym]["C"])
+                p_max = max(r[sym]["H"], r[sym]["O"], r1[sym]["C"])
+                p_cl, died = fC(rows, inds)
+                if (p_tp != None) and (p_min <= p_tp <= p_max): p_cl, died = p_tp, "TP"
+                if (p_sl != None) and (p_min <= p_sl <= p_max): p_cl, died = p_sl, "SL"
+                if (order > 0): Active.loc[index, "WP"] = min(p_wp, p_min)
+                if (order < 0): Active.loc[index, "WP"] = max(p_wp, p_max)
+                if (died == "SL"): Active.loc[index, "WP"] = p_cl
+                trade = [t_op, p_op, order, size, sym, t, p_cl, p_wp, born, died]
+                if died:
+                    trade = dict(zip(Backtest._cClosed, trade))
+                    Closed = Closed.append(trade, ignore_index = True)
+                    to_close.append(index); continue
+                Active.loc[index, "SL"] = fT(rows, inds)
+            if to_close: Active.drop(index = to_close, inplace = True)
+            if sign["Order"] and (len(Active) < max_trades):
+                Active = Active.append(sign, ignore_index = True)
+            progbar.show()
+        return Closed
+
 if (__name__ == "__main__"):
 
-    symbol, frame, rows = "USDCAD", "H1", 100 ## IQ and FH have different quote labels!
-    df = MkData.download_iq(symbol, frame, rows, password = "12345678")
-    f, a = Candle.plot(df["O"], df["H"], df["L"], df["C"], V = df["V"], T = df.index)
-    a.set_title(f"{symbol}, {frame}, {rows} rows")
-    f.savefig(fname = "testfig.jpg")
+    account = {"email": "gsolaril@alu.itba.edu.ar", "pword": "12345678"}
+    symbols, frame, rows = ["USDCAD", "GBPNZD"], "H1", 50 ## IQ and FH have different quote labels!
+    dataset = MkData.download_iq(symbols, frame, rows, **account)
+    print(dataset)
+    #f, a = Candle.plot(df["O"], df["H"], df["L"], df["C"], V = df["V"], T = df.index)
+    #a.set_title(f"{symbol}, {frame}, {rows} rows")
+    #f.savefig(fname = "testfig.jpg")
