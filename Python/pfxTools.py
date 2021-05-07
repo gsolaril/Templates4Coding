@@ -1,7 +1,35 @@
-import time, numpy, pandas, matplotlib.pyplot, finnhub, sys
+import time, numpy, pandas, matplotlib.pyplot, finnhub, sys, itertools
 from datetime import datetime as DT_, timedelta as TD_
 from iqoptionapi.stable_api import IQ_Option as iq
 from getpass import getpass
+
+class MathFx:
+
+    @staticmethod
+    def flog(n: float, b: float = 10):
+        """
+        Fake logarithm. Divides the logarithm base "b" of argument "n" into its non-decimal and
+        decimal part. Keeps its whole part and linearly maps the remainder into the final result,
+        in the interval between the whole part and the next integer. Method described in example
+        below.
+        Inputs:     * (float) "n": argument. Must be real and positive.
+                    * (float) "b": base. Must be real and positive.
+        Output:     * (float) Output.
+        Examples:   - flog(n, 10), where "n" is any integer between 0 and 1000...
+                      n => 1, 2, 3,..., 10, 20, 30, ..., 100, 200, 300, ..., 1000,
+                      f => 0, 0.1*, 0.2*,..., 1, 1.1*, 1.2*, ..., 2, 2.1*, 2.2*, ..., 3
+                      Asterisk "*" denotes that the decimal part is periodic.
+                    - flog(47, 10)... "n = 47", "b = 10".
+                        Step 1: Keep the whole part "W" of its normal log.
+                        ... "47 is between 10 (10^1) and 100 (10^2)" ==> "W = 1"
+                        Step 2: Linearly map decimal remainder between "[10ᵂ, 10ᵂ⁺¹]".
+                        ... "47 is 37 apart from 10, 100 is 90 apart from 10" ==> D = 37/90
+                        Step 3: Add both parts together, and return.
+                        ... "f = W + D = 1 + 37/90" ==> return "f = 1.41*"
+        """
+        W = int(numpy.log(n)/numpy.log(b))
+        D = (n - W)/((b - 1)*(b**W))
+        return W + D
 
 class MkData:
 
@@ -51,7 +79,7 @@ class MkData:
 
     @staticmethod
     def __download_iq(API, symbol: str, frame: str, rows: int = 1000, now: DT_ = None):
-        """[Private function. Use public, without trailing underscores] """
+        """ [Private function. Use public, without trailing underscores] """
         if not isinstance(symbol, str): raise TypeError("Symbol must be a string.")
         if not isinstance(frame, str): raise TypeError("Timeframe must be a string.")
         if not isinstance(rows, int) or (rows < 1):
@@ -77,7 +105,7 @@ class MkData:
 
     @staticmethod
     def __download_fh(API, symbol: str, frame: str, rows: int = 1000, now: DT_ = None):
-        """[Private function. Use public, without trailing underscores] """
+        """ [Private function. Use public, without trailing underscores] """
         if (now == None): now = DT_.now()
         frame = MkData.frame2secs(frame)
         t = int(now.timestamp())
@@ -255,8 +283,8 @@ class ProgBar:
         sys.stdout.flush()
 
 class Backtest:
-    _cActive = ["OT", "OP", "Order", "Size", "Sym", "SL", "TP", "WP", "Born", "fC", "fT"]
-    _cClosed = ["OT", "OP", "Order", "Size", "Sym", "CT", "CP", "WP", "Born", "Died"]
+    _cActive = ["OT", "OP", "Order", "Lot", "Sym", "SL", "TP", "WP", "Born", "fC", "fT"]
+    _cClosed = ["OT", "OP", "Order", "Lot", "Sym", "CT", "CP", "WP", "Born", "Died"]
 
     @staticmethod
     def binary(Strategy, Data: pandas.DataFrame) -> pandas.DataFrame: pass
@@ -287,7 +315,7 @@ class Backtest:
             Data.loc[t, "Delay"] = time.time() - t_calc
             for index in Active.index:
                 trade = Active.loc[index, :].values
-                t_op, p_op, order, size, sym, p_sl, p_tp, p_wp, born, fC, fT = trade
+                t_op, p_op, order, lot, sym, p_sl, p_tp, p_wp, born, fC, fT = trade
                 p_min = min(r[sym]["L"], r[sym]["O"], r1[sym]["C"])
                 p_max = max(r[sym]["H"], r[sym]["O"], r1[sym]["C"])
                 p_cl, died = fC(rows, inds)
@@ -296,7 +324,7 @@ class Backtest:
                 if (order > 0): Active.loc[index, "WP"] = min(p_wp, p_min)
                 if (order < 0): Active.loc[index, "WP"] = max(p_wp, p_max)
                 if (died == "SL"): Active.loc[index, "WP"] = p_cl
-                trade = [t_op, p_op, order, size, sym, t, p_cl, p_wp, born, died]
+                trade = [t_op, p_op, order, lot, sym, t, p_cl, p_wp, born, died]
                 if died:
                     trade = dict(zip(Backtest._cClosed, trade))
                     Closed = Closed.append(trade, ignore_index = True)
@@ -307,6 +335,84 @@ class Backtest:
                 Active = Active.append(sign, ignore_index = True)
             progbar.show()
         return Closed
+
+    @staticmethod
+    def project(Data: pandas.DataFrame, Trades: pandas.DataFrame, p_size: float, p_value: float,
+                funds: float = 10000, i_lot: float = 1, f_comp: float = 1, leverage: int = 100):
+        """
+        Second phase of backtest, where monetary variables are analyzed. We chose to separate
+        between "trades()" and "timeline()" so as to be able to simulate different financial
+        scenarios (different initial capital, different compounding method, etc.) without
+        having to repeat the backtesting process, which may take time.
+        Inputs:     * (pandas.DataFrame) "Data": Market history dataframe, used in "trades()".
+                    * (pandas.DataFrame) "Trades": trades' spreadsheet from first phase.
+                    * (float, float) "ps" and "pv": Point size and point value, respectively.
+                    * (float, float) "in_cap" and "in_lot": Starting capital and lot size.
+                    * (float) "f_comp": Compounding factor. Lot after trade will always change
+                      by "f_comp × R" where "R" is the return generated by the previous trade.
+                    * (int) "lev": Leverage.
+        Outputs:    * (pandas.DataFrame) "Account": How do the financial variables would vary
+                      along the backtesting timeline: funds, equity, margin and margin level.
+                      Also, "Trades" gets the following new columns:
+                        - "USD": Absolute profit (monetary units) of each trade.
+                        - "RET": Relative profit (%) of each trade with respect to funds.
+                        - "Sink": Floating money loss at the worst price ("WP").
+                        - "Margin": Margin consumed from brokerage, by each trade.
+        """
+        Trades["PTS"] = Trades["Diff"] / p_size
+        Trades["USD"] = (Trades["Lot"] * Trades["PTS"] * p_value).round(2)
+        compound_rate = (1 + f_comp*Trades["USD"]/funds).cumprod()
+        compound_rate = compound_rate.shift().fillna(1)
+        Trades["Lot"] = (Trades["Lot"] * compound_rate).round(2)
+        Trades["USD"] = Trades["Lot"] * Trades["PTS"] * p_value
+        account_funds = Trades["USD"].cumsum() + funds
+        Trades["RET"] = account_funds.pct_change().fillna(0)
+        Trades["Sink"] = - abs(Trades["WP"] - Trades["OP"])
+        Trades["Sink"] *= Trades["Lot"] * p_value / p_size
+        Trades["Margin"] = Trades["OP"] * Trades["Lot"]
+        Trades["Margin"] *= p_value / (p_size * leverage)
+        #################################################
+        c = ["Funds", "Equity", "Margin", "Level"]
+        Funds = Trades.copy()[["CT", "USD"]]
+        Funds["USD"] = Funds["USD"].cumsum() + funds
+        Funds = Funds.drop_duplicates(subset = "CT", keep = "last")
+        Account = pandas.DataFrame(index = Data.index, columns = c)
+        Account.at[Data.index[0], :] = [funds, funds, 0, 0]
+        for i in Funds.index:
+            Account.at[Funds["CT"][i], c[: 2]] = Funds["USD"][i]
+        Account.ffill(inplace = True)
+        for i in Trades.index:
+            t1, t2, s, m = Trades.loc[i, ["OT", "CT", "Sink", "Margin"]]
+            Account.loc[t1 : t2, ["Equity", "Margin"]] += [-s, +m]
+        Account["Level"] = Account["Equity"] / Account["Margin"]
+        return Account
+
+    @staticmethod
+    def stats(Trades: pandas.DataFrame) -> pandas.DataFrame:
+        """
+        Third phase of backtest, where results are statistically analyzed.
+        Inputs:     * (pandas.DataFrame) "Trades": trades' spreadsheet from previous phases.
+        Outputs:    * (pandas.DataFrame) "Stats": spreadsheet holding various statistical
+                        results and metrics.
+                        - When second "project()" phase has been included, analysis is made on
+                        3 distinct "scores": points ("PTS"), money ("USD") and returns ("RET").
+                        - When second phase is omitted, calculations are only made on price
+                        difference outcomes ("Diff") so only one column is returned. Results
+                        should be indeed equal to "PTS", albeit divided by point size.
+        """
+        nt = Trades.shape[0] ; columns = ["PTS", "USD", "RET"]
+        if (Trades.shape[1] != 15): columns = ["Diff"]
+        Stats = pandas.DataFrame(columns = columns)
+        Stats.loc["Num :)", :] = (Trades["Diff"] > 0).sum()
+        Stats.loc["Num :(", :] = (Trades["Diff"] < 0).sum()
+        Stats.loc["R. Hit", :] = Stats.loc["# :)", :]/nt
+        dtime = (Trades["CT"] - Trades["OT"]).values
+        Stats.loc["Avg. secs", :] = dtime.mean()/1e9
+        dtime = Trades["CT"].max() - Trades["OT"].min()
+        Stats.loc["Trades/hr", :] = 1440*nt/dtime.seconds
+        # for c in columns:
+            # Stats.loc["...", c] = ...
+        return Stats
 
 if (__name__ == "__main__"):
 
