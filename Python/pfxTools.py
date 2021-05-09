@@ -284,7 +284,7 @@ class ProgBar:
 
 class Backtest:
     _cActive = ["OT", "OP", "Order", "Lot", "Sym", "SL", "TP", "WP", "Born", "fC", "fT"]
-    _cClosed = ["OT", "OP", "Order", "Lot", "Sym", "CT", "CP", "WP", "Born", "Died"]
+    _cClosed = ["OT", "OP", "Order", "Lot", "Sym", "CT", "CP", "WP", "Born", "Died", "Diff"]
 
     @staticmethod
     def binary(Strategy, Data: pandas.DataFrame) -> pandas.DataFrame: pass
@@ -324,7 +324,8 @@ class Backtest:
                 if (order > 0): Active.loc[index, "WP"] = min(p_wp, p_min)
                 if (order < 0): Active.loc[index, "WP"] = max(p_wp, p_max)
                 if (died == "SL"): Active.loc[index, "WP"] = p_cl
-                trade = [t_op, p_op, order, lot, sym, t, p_cl, p_wp, born, died]
+                diff = order*(p_cl - p_op)
+                trade = [t_op, p_op, order, lot, sym, t, p_cl, p_wp, born, died, diff]
                 if died:
                     trade = dict(zip(Backtest._cClosed, trade))
                     Closed = Closed.append(trade, ignore_index = True)
@@ -400,19 +401,41 @@ class Backtest:
                         difference outcomes ("Diff") so only one column is returned. Results
                         should be indeed equal to "PTS", albeit divided by point size.
         """
+        from scipy.stats import norm
         nt = Trades.shape[0] ; columns = ["PTS", "USD", "RET"]
-        if (Trades.shape[1] != 15): columns = ["Diff"]
+        if (Trades.shape[1] != 16): columns = ["Diff"]
         Stats = pandas.DataFrame(columns = columns)
         Stats.loc["Num :)", :] = (Trades["Diff"] > 0).sum()
         Stats.loc["Num :(", :] = (Trades["Diff"] < 0).sum()
-        Stats.loc["R. Hit", :] = Stats.loc["# :)", :]/nt
+        Stats.loc["R. Hit", :] = Stats.loc["Num :)", :]/nt
         dtime = (Trades["CT"] - Trades["OT"]).values
-        Stats.loc["Avg. secs", :] = dtime.mean()/1e9
+        Stats.loc["Avg secs", :] = dtime.mean() / 1e9
         dtime = Trades["CT"].max() - Trades["OT"].min()
         Stats.loc["Trades/hr", :] = 1440*nt/dtime.seconds
-        # for c in columns:
-            # Stats.loc["...", c] = ...
+        for c in columns:
+            m_, s_ = Trades.loc[:, c].mean(), Trades.loc[:, c].std()
+            SH_, sh_ = (m_/s_), numpy.sqrt(nt)*(m_ / s_)
+            Stats.at["Diff :)", c] = (Trades.loc[Trades["Diff"] > 0, c]).sum()
+            Stats.at["Max :)", c] = (Trades.loc[Trades["Diff"] > 0, c]).max()
+            Stats.at["Mean :)", c] = (Trades.loc[Trades["Diff"] > 0, c]).mean()
+            Stats.at["StDv :)", c] = (Trades.loc[Trades["Diff"] > 0, c]).std()
+            Stats.at["Diff :(", c] = (Trades.loc[Trades["Diff"] < 0, c]).sum()
+            Stats.at["Min :(", c] = (Trades.loc[Trades["Diff"] < 0, c]).min()
+            Stats.at["Mean :(", c] = (Trades.loc[Trades["Diff"] < 0, c]).mean()
+            Stats.at["StDv :(", c] = (Trades.loc[Trades["Diff"] < 0, c]).std()
+            Stats.at["Diff", c] = (Trades.loc[:, c]).sum()
+            Stats.at["Mean", c], Stats.at["StDv", c] = m_, s_
+            Stats.at["Skew", c] = (Trades.loc[:, c]).skew()
+            Stats.at["Sharpe", c], Stats.at["sharpe", c] = SH_, sh_
+            Stats.at["Var", c] = norm.ppf(0.05) * s_ + m_
+            Stats.at["var", c] = norm.ppf(0.05) * s_ + m_
+            Stats.at["Z-prob", c] = norm.cdf(- SH_)
+            Stats.at["z-prob", c] = norm.cdf(- sh_)
         return Stats
+
+    @staticmethod
+    def plot(): pass
+        #return _f, _a
 
 if (__name__ == "__main__"):
 
