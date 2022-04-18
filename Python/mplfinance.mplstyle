@@ -65,9 +65,9 @@ axes.grid: True
 axes3d.grid: True
 polaraxes.grid: True
 axes.grid.which: major
-grid.alpha: 0.1
+grid.alpha: 0.2
 grid.color: grey
-grid.linewidth: 2
+grid.linewidth: 1
 grid.linestyle: -
 
 ###################### LEGEND
