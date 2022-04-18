@@ -65,10 +65,10 @@ axes.grid: True
 axes3d.grid: True
 polaraxes.grid: True
 axes.grid.which: major
-grid.alpha: 0.30
+grid.alpha: 0.4
 grid.color: grey
-grid.linewidth: 3
-grid.linestyle: :
+grid.linewidth: 2
+grid.linestyle: -
 
 ###################### LEGEND
 legend.framealpha: 0.75
