@@ -4,20 +4,29 @@
 figure.figsize: 15, 5
 figure.facecolor: black
 figure.edgecolor: black
+figure.autolayout: True
+figure.subplot.wspace: 0.15
+#figure.subplot.hspace: 0.1
 savefig.facecolor: black
 savefig.edgecolor: black
 
 ##################### TEXT
 text.color: white
 font.family: sans-serif
-font.size: 10
+font.size: 12
 font.weight: normal
+mathtext.default: rm
 
 ###################### TITLES
-figure.titleweight: normal
-figure.titlesize: 12
-axes.titleweight: normal
-axes.titlesize: 12
+figure.titleweight: bold
+figure.titlesize: 14
+figure.dpi: 120
+axes.titleweight: bold
+axes.titlesize: 14
+axes.titlepad: 4.0
+axes.labelsize: 14
+axes.labelpad: 2.0
+axes.labelweight: bold
 
 ##################### AXIS SIZES
 xtick.major.size: 7
@@ -28,6 +37,8 @@ ytick.major.size: 7
 ytick.major.width: 2
 ytick.minor.size: 5
 ytick.minor.width: 2
+xtick.labelsize: 12
+ytick.labelsize: 12
 
 ###################### DRAWING TOOLS
 lines.color: white
@@ -39,6 +50,7 @@ axes.edgecolor: white
 axes.linewidth: 1.5
 axes.labelcolor: white
 axes.prop_cycle: cycler('color', ['ff0000', 'ee0011', 'dd0022', 'cc0033', 'bb0044', 'aa0055', '990066', '880077', '770088', '660099', '5500aa', '4400bb', '3300cc', '2200dd', '1100ee', '0000ff'])
+axes.formatter.use_mathtext: True
 
 ###################### COLORMAP
 image.cmap: jet
@@ -53,13 +65,17 @@ axes.grid: True
 axes3d.grid: True
 polaraxes.grid: True
 axes.grid.which: major
-grid.alpha:  0.67
-grid.color: white
+grid.alpha: 0.30
+grid.color: grey
+grid.linewidth: 3
 grid.linestyle: :
 
 ###################### LEGEND
 legend.framealpha: 0.75
-legend.fontsize: 10
+legend.fontsize: 14
 legend.frameon: False
 legend.numpoints: 1
 legend.scatterpoints: 1
+
+####################### PARTICULAR PLOTS
+hist.bins: 10
